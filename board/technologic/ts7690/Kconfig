@@ -1,7 +1,7 @@
-if TARGET_TS7695
+if TARGET_TS7690
 
 config SYS_BOARD
-	default "ts7695"
+	default "ts7690"
 
 config SYS_VENDOR
 	default "technologic"
@@ -10,6 +10,6 @@ config SYS_SOC
 	default "mxs"
 
 config SYS_CONFIG_NAME
-	default "ts7695"
+	default "ts7690"
 
 endif

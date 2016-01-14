@@ -1,13 +1,13 @@
 /*
  * (C) Copyright 2011 Freescale Semiconductor, Inc.
  *
- * TS-7695 config
+ * TS-7690 config
  * Based on m28evk.h
  *
  * SPDX-License-Identifier:	GPL-2.0+
  */
-#ifndef __CONFIGS_TS7695_H__
-#define __CONFIGS_TS7695_H__
+#ifndef __CONFIGS_TS7690_H__
+#define __CONFIGS_TS7690_H__
 
 /* System configurations */
 #define CONFIG_MX28				/* i.MX28 SoC */
@@ -198,7 +198,7 @@
 			"source ${loadaddr}; " \
 		"fi; " \
 		"load mmc ${bootpart} ${loadaddr} ${uimage}; " \
-		"if load mmc ${bootpart} ${fdtaddr} /boot/imx28-ts7695.dtb; then " \
+		"if load mmc ${bootpart} ${fdtaddr} /boot/imx28-ts7690.dtb; then " \
 			"echo Using device tree; " \
 			"bootm ${loadaddr} - ${fdtaddr}; "\
 		"else " \
@@ -221,7 +221,7 @@
 		"nfs ${loadaddr} ${nfsroot}${uimage}; " \
 		"setenv bootargs root=/dev/nfs ip=dhcp " \
 		  "nfsroot=${serverip}:${nfsroot},vers=2,nolock ${cmdline_append}; " \
-		"if nfs ${fdtaddr} ${nfsroot}/boot/imx28-ts7695.dtb; then " \
+		"if nfs ${fdtaddr} ${nfsroot}/boot/imx28-ts7690.dtb; then " \
 			"echo Using device tree; " \
 			"bootm ${loadaddr} - ${fdtaddr}; "\
 		"else " \
@@ -239,4 +239,4 @@
 /* The rest of the configuration is shared */
 #include <configs/mxs.h>
 
-#endif /* __CONFIGS_TS7695_H__ */
+#endif /* __CONFIGS_TS7690_H__ */
