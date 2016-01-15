@@ -121,10 +121,9 @@
 #endif
 
 /* I2C */
-#ifdef CONFIG_CMD_I2C
+#define CONFIG_CMD_I2C
 #define CONFIG_I2C_MXS
-#define CONFIG_SYS_I2C_SPEED            100000
-#endif
+#define CONFIG_SYS_I2C_SPEED            100000 
 
 /* SPI */
 #ifdef CONFIG_CMD_SPI

@@ -1,7 +1,7 @@
 /*
- * Technologic TS-7680 Single-board Computer
+ * Technologic TS-7689 Single-board Computer
  *
- * (C) Copyright 2015 Technologic Systems
+ * (C) Copyright 2016 Technologic Systems
  * Based on work by:
  * Stuart Longland of VRT Systems <stuartl@vrt.com.au>
  *
@@ -23,6 +23,12 @@
 #include <netdev.h>
 #include <errno.h>
 #include <spi.h>
+#include <fpga.h>
+#include <lattice.h>
+#include <i2c.h>
+
+#define TS7690_SDBOOT_JP	MX28_PAD_LCD_WR_RWN__GPIO_1_25
+#define TS7690_UBOOT_JP		MX28_PAD_LCD_VSYNC__GPIO_1_28
 
 DECLARE_GLOBAL_DATA_PTR;
 int random_mac = 0;
@@ -34,9 +40,84 @@ void mx28_adjust_mac(int dev_id, unsigned char *mac)
 	mac[2] = 0x69;
 }
 
-/*
- * Functions
- */
+static void enable_fpga_clk(void) 
+{
+	// Clear PWM clk gate
+	writel(0x20000000, 0x80040088); // HW_CLKCTRL_XTAL_SET
+
+	// Take PWM out of reset
+	writel(0x80000000, 0x80064008); // HW_PWM_CTRL_CLR
+	writel(0x40000000, 0x80064008); // HW_PWM_CTRL_CLR
+
+	// Set PWM active and period
+	writel(0x10000, 0x80064050); // HW_PWM_ACTIVE2
+	writel(0xb0001, 0x80064060); // HW_PWM_PERIOD2
+
+	// Enable PWM output
+	writel(0x4, 0x80064004); // HW_PWM_CTRL_SET
+	
+}
+
+
+#if defined(CONFIG_FPGA)
+
+static void ts7690_jtag_init(void)
+{
+	gpio_direction_output(CONFIG_FPGA_TDI, 1);
+	gpio_direction_output(CONFIG_FPGA_TCK, 1);
+	gpio_direction_output(CONFIG_FPGA_TMS, 1);
+	gpio_direction_input(CONFIG_FPGA_TDO);
+	return;
+}
+
+static void ts7690_fpga_jtag_set_tdi(int value)
+{
+	gpio_set_value(CONFIG_FPGA_TDI, value);
+}
+
+static void ts7690_fpga_jtag_set_tms(int value)
+{
+	gpio_set_value(CONFIG_FPGA_TMS, value);
+}
+
+static void ts7690_fpga_jtag_set_tck(int value)
+{
+	gpio_set_value(CONFIG_FPGA_TCK, value);
+}
+
+static int ts7690_fpga_jtag_get_tdo(void)
+{
+	return gpio_get_value(CONFIG_FPGA_TDO);
+}
+
+lattice_board_specific_func ts7690_fpga_fns = {
+	ts7690_jtag_init,
+	ts7690_fpga_jtag_set_tdi,
+	ts7690_fpga_jtag_set_tms,
+	ts7690_fpga_jtag_set_tck,
+	ts7690_fpga_jtag_get_tdo
+};
+
+Lattice_desc ts7690_fpga = {
+	Lattice_XP2,
+	lattice_jtag_mode,
+	589012,
+	(void *) &ts7690_fpga_fns,
+	NULL,
+	0,
+	"machxo_2_cb132"
+};
+
+int ts7690_fpga_init(void)
+{
+	fpga_init();
+	fpga_add(fpga_lattice, &ts7690_fpga);
+
+	return 0;
+}
+
+#endif // CONFIG_FPGA
+
 int board_early_init_f(void)
 {
 	/* IO0 clock at 480MHz */
@@ -68,13 +149,29 @@ int dram_init(void)
 
 int misc_init_r(void)
 {
-	struct mxs_spl_data *data = (struct mxs_spl_data *)
-	  ((CONFIG_SYS_TEXT_BASE - sizeof(struct mxs_spl_data)) & ~0xf);
+	int sdboot = 0;
 
-	setenv_hex("bootmode", mxs_boot_modes[data->boot_mode_idx].boot_pads);
-	setenv("model", "7695");
+	setenv("model", "7690");
+
+	gpio_direction_input(TS7690_SDBOOT_JP);
+	sdboot = gpio_get_value(TS7690_SDBOOT_JP);
+
+	if(sdboot) setenv("jpsdboot", "off");
+	else setenv("jpsdboot", "on");
+	
+	gpio_direction_input(TS7690_UBOOT_JP);
+	sdboot = gpio_get_value(TS7690_UBOOT_JP);
+
+	if(sdboot) setenv("jpuboot", "off");
+	else setenv("jpuboot", "on");
+
+#if defined(CONFIG_FPGA)
+	ts7690_fpga_init();
+#endif
+	enable_fpga_clk();
+
+	return 0;
 }
-
 
 int board_init(void)
 {
@@ -84,19 +181,28 @@ int board_init(void)
 	return 0;
 }
 
-#ifdef	CONFIG_CMD_MMC
-static int ts7400_mmc_cd(int id) {
+static int ts7690_mmc_cd(int id) {
 	return 1;
 }
+
 int board_mmc_init(bd_t *bis)
 {
-	/* Configure MMC0 Power Enable */
-	int ret = mxsmmc_initialize(bis, 0, NULL, ts7400_mmc_cd);
-	//if (ret)
-	return ret;
-	//return mxsmmc_initialize(bis, 1, NULL, ts7400_mmc_cd);
+	int ret;
+
+	/* SD card */
+	ret = mxsmmc_initialize(bis, 0, NULL, ts7690_mmc_cd);
+	if(ret != 0) {
+		printf("SD controller initialized with %d\n", ret);
+	}
+
+	/* eMMC */
+	ret = mxsmmc_initialize(bis, 1, NULL, ts7690_mmc_cd);
+	if(ret != 0) {
+		printf("eMMC controller initialized with %d\n", ret);
+	}
+
+	return 0;
 }
-#endif
 
 #ifdef	CONFIG_CMD_NET
 
@@ -107,6 +213,10 @@ int board_eth_init(bd_t *bis)
 	struct eth_device *dev;
 	int ret;
 	uchar enetaddr[6];
+	uint8_t val = 0x2;
+
+	/* Take switch out of reset */
+	/*i2c_write(0x28, 0x2b, 2, &val, 1);*/
 
 	ret = cpu_eth_init(bis);
 	if (ret)
@@ -147,3 +257,47 @@ int board_eth_init(bd_t *bis)
 }
 
 #endif
+
+
+static int set_mx28_spi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	unsigned int mode;
+	unsigned char val = 0xa5;
+
+	if(argc != 2) {
+		printf("Requires a single argument\n");
+		return 1;
+	}
+
+	mode = simple_strtoul(argv[1], NULL, 16);
+	switch(mode) {
+	  case 0:
+		val = 0;
+		break;
+	  case 1:
+		val = 0x3;
+		break;
+	  case 2:
+		val = 0x1;
+		break;
+	  case 3:
+		val = 0x4;
+		break;
+	  default:
+		printf("Argument must be 0, 1, 2, or 3\n");
+		return 1;
+		break;
+	}
+
+	i2c_write(0x28, 0x2a, 2, &val, 1);
+	return 0;
+}
+
+U_BOOT_CMD(mx28_prod, 2, 0, set_mx28_spi, 
+	"Production command to set boot SPI settings",
+	"[Mode]\n"
+	"  Where mode is:\n"
+	"    0 - En. SPI CS#, 9468 switch selected\n"
+	"    1 - En. SPI CS#, force on-board SPI\n"
+	"    2 - En. SPI CS#, force off-board SPI\n"
+	"    3 - Dis. SPI CS# output (En. use of UART 2 & 3)\n");
