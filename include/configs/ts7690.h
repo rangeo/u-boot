@@ -172,20 +172,39 @@
 #define CONFIG_SYS_PROMPT              "U-Boot > "
 #define CONFIG_AUTO_COMPLETE
 
+#define CONFIG_PREBOOT \
+	"if test \"${jpuboot}\" = \"on\"; then " \
+		" setenv bootdelay -1; " \
+		" echo UBoot jumper installed, checking usb and stopping boot.; " \
+		" run usbprod; " \
+	" else " \
+		" setenv bootdelay 0; " \
+	"fi"
+
 /* Extra Environment */
 #define CONFIG_EXTRA_ENV_SETTINGS \
-	"autoload=no\0" \
-	"uimage=/boot/uImage\0" \
-	"script=/boot/boot.ub\0" \
-	"usb_script=/tsinit.ub\0" \
 	"nfsroot=/nfsroot/\0" \
 	"nfsip=192.168.0.1\0" \
 	"fdtaddr=0x41000000\0" \
 	"bootpart=0:2\0" \
 	"bootname=SD card\0" \
-	"cmdline_append=rw rootwait console=null\0" \
+	"cmdline_append=rw rootwait console=ttyAMA0,115200 loglevel=3\0" \
 	"boot_fdt=yes\0" \
 	"ip_dyn=yes\0" \
+        "update-uboot=echo Updating u-boot from /boot/u-boot.sb; " \
+			"if test ${jpsdboot} = 'on' ; " \
+			"then if load mmc 0:2 ${loadaddr} /boot/u-boot.sb; " \
+				"then sf probe; " \
+				"sf erase 0 80000; " \
+				"sf write ${loadaddr} 0 ${filesize}; " \
+			"fi;" \
+		"else " \
+			"if load mmc 1:2 ${loadaddr} /boot/u-boot.sb; " \
+				"then sf probe; " \
+				"sf erase 0 80000; " \
+				"sf write ${loadaddr} 0 ${filesize}; " \
+			"fi; " \
+		"fi;\0" \
 	"emmcboot=" \
 		"setenv bootpart 2:0;" \
 		"setenv bootname eMMC;" \
@@ -230,10 +249,10 @@
 
 
 #define CONFIG_BOOTCOMMAND \
-	"setenv bootargs root=/dev/mmcblk0p2 ${cmdline_append};" \
-	"run usbprod; "\
-	"run sdboot;"\
-	
+	"if test ${jpsdboot} = 'on' ; " \
+		"then run sdboot; " \
+		"else run emmcboot; " \
+	"fi;"
 
 /* The rest of the configuration is shared */
 #include <configs/mxs.h>
