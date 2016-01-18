@@ -25,10 +25,10 @@
 
 #define STATUS_LED_BOOT			STATUS_LED_GREEN
 
+#define CONFIG_RED_LED                  MX28_PAD_GPMI_D07__GPIO_0_7
+#define CONFIG_GREEN_LED                MX28_PAD_GPMI_D05__GPIO_0_5
 #define STATUS_LED_RED			0
 #define STATUS_LED_GREEN		1
-#define STATUS_LED_YELLOW		2
-#define STATUS_LED_BLUE			3
 
 #define STATUS_LED_BIT                  STATUS_LED_RED
 #define STATUS_LED_STATE                STATUS_LED_ON
@@ -37,15 +37,6 @@
 #define STATUS_LED_BIT1                 STATUS_LED_GREEN
 #define STATUS_LED_STATE1               STATUS_LED_ON
 #define STATUS_LED_PERIOD1              (CONFIG_SYS_HZ / 2)
-
-#define STATUS_LED_BIT2                 STATUS_LED_YELLOW
-#define STATUS_LED_STATE2               STATUS_LED_ON
-#define STATUS_LED_PERIOD2              (CONFIG_SYS_HZ / 2)
-
-#define STATUS_LED_BIT3                 STATUS_LED_BLUE
-#define STATUS_LED_STATE3               STATUS_LED_ON
-#define STATUS_LED_PERIOD3              (CONFIG_SYS_HZ / 2)
-
 
 #define CONFIG_CMD_CACHE
 #define CONFIG_CMD_DATE
