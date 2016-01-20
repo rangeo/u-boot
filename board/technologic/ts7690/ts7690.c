@@ -1,5 +1,5 @@
 /*
- * Technologic TS-7689 Single-board Computer
+ * Technologic TS-7690 Single-board Computer
  *
  * (C) Copyright 2016 Technologic Systems
  * Based on work by:
@@ -127,6 +127,8 @@ int board_early_init_f(void)
 
 	/* SSP0 clock at 96MHz */
 	mxs_set_sspclk(MXC_SSPCLK0, 96000, 0);
+	/* SSP1 clock at 96MHz */
+	mxs_set_sspclk(MXC_SSPCLK1, 96000, 0);
 	/* SSP2 clock at 160MHz */
 	mxs_set_sspclk(MXC_SSPCLK2, 160000, 0);
 

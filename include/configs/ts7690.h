@@ -177,8 +177,6 @@
 	"nfsroot=/nfsroot/\0" \
 	"nfsip=192.168.0.1\0" \
 	"fdtaddr=0x41000000\0" \
-	"bootpart=0:2\0" \
-	"bootname=SD card\0" \
 	"cmdline_append=rw rootwait console=ttyAMA0,115200 loglevel=3\0" \
 	"boot_fdt=yes\0" \
 	"ip_dyn=yes\0" \
@@ -196,24 +194,32 @@
 				"sf write ${loadaddr} 0 ${filesize}; " \
 			"fi; " \
 		"fi;\0" \
-	"emmcboot=" \
-		"setenv bootpart 2:0;" \
-		"setenv bootname eMMC;" \
-		"setenv bootargs root=/dev/mmcblk2p2 ${cmdline_append};" \
-		"run sdboot; \0" \
-	"sdboot=echo Booting from the ${bootname} ...; " \
-		"if load mmc ${bootpart} ${loadaddr} ${script}; " \
-			"then echo Booting from custom ${script}; " \
+	"emmcboot=echo Booting from the onboard eMMC  ...; " \
+		"if load mmc 1:2 ${loadaddr} /boot/boot.ub; " \
+			"then echo Booting from custom /boot/boot.ub; " \
 			"source ${loadaddr}; " \
 		"fi; " \
-		"load mmc ${bootpart} ${loadaddr} ${uimage}; " \
-		"if load mmc ${bootpart} ${fdtaddr} /boot/imx28-ts7690.dtb; then " \
-			"echo Using device tree; " \
-			"bootm ${loadaddr} - ${fdtaddr}; "\
-		"else " \
-			"echo Booting without device tree ; " \
-			"bootm ${loadaddr};" \
-		"fi; \0" \
+		"if load mmc 1:2 ${loadaddr} /boot/ts7680-fpga.vme; " \
+			"then fpga load 0 ${loadaddr} ${filesize}; " \
+		"fi; " \
+		"load mmc 1:2 ${loadaddr} /boot/uImage; " \
+		"load mmc 1:2 ${fdtaddr} /boot/imx28-ts7680.dtb; " \
+		"setenv bootargs root=/dev/mmcblk2p2 ${cmdline_append}; " \
+		"mx28_prod 3;" \
+		"bootm ${loadaddr} - ${fdtaddr}; \0"\
+	"sdboot=echo Booting from the SD Card ...; " \
+		"if load mmc 0:2 ${loadaddr} /boot/boot.ub; " \
+			"then echo Booting from custom /boot/boot.ub; " \
+			"source ${loadaddr}; " \
+		"fi; " \
+		"if load mmc 0:2 ${loadaddr} /boot/ts7680-fpga.vme; " \
+			"then fpga load 0 ${loadaddr} ${filesize}; " \
+		"fi; " \
+		"load mmc 0:2 ${loadaddr} /boot/uImage; " \
+		"load mmc 0:2 ${fdtaddr} /boot/imx28-ts7680.dtb; " \
+		"setenv bootargs root=/dev/mmcblk0p2 ${cmdline_append}; " \
+		"mx28_prod 3;" \
+		"bootm ${loadaddr} - ${fdtaddr}; \0"\
 	"usbprod=usb start; " \
 		"if usb storage; " \
 			"then echo Checking USB storage for updates; " \
@@ -224,19 +230,15 @@
 				"exit; " \
 			"fi; " \
 		"fi; \0" \
-        "nfsboot=echo Booting from NFS ...; " \
-		"dhcp ; " \
+	"nfsboot=echo Booting from NFS ...; " \
+		"dhcp; " \
 		"env set serverip ${nfsip}; " \
-		"nfs ${loadaddr} ${nfsroot}${uimage}; " \
+		"nfs ${loadaddr} ${nfsroot}/boot/uImage; " \
 		"setenv bootargs root=/dev/nfs ip=dhcp " \
 		  "nfsroot=${serverip}:${nfsroot},vers=2,nolock ${cmdline_append}; " \
-		"if nfs ${fdtaddr} ${nfsroot}/boot/imx28-ts7690.dtb; then " \
-			"echo Using device tree; " \
-			"bootm ${loadaddr} - ${fdtaddr}; "\
-		"else " \
-			"echo Booting without device tree ; " \
-			"bootm ${loadaddr};" \
-		"fi; \0" \
+		"nfs ${fdtaddr} ${nfsroot}/boot/imx28-ts7680.dtb; " \
+		"mx28_prod 3;" \
+		"bootm ${loadaddr} - ${fdtaddr};\0"\
 
 
 #define CONFIG_BOOTCOMMAND \
