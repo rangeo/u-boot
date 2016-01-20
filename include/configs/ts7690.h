@@ -11,7 +11,6 @@
 
 /* System configurations */
 #define CONFIG_MX28				/* i.MX28 SoC */
-#define CONFIG_MACH_TYPE	MACH_TYPE_MX28EVK
 
 /* U-Boot Commands */
 #define CONFIG_SYS_NO_FLASH
@@ -35,11 +34,17 @@
 #define STATUS_LED_PERIOD               (CONFIG_SYS_HZ / 2)
 
 #define STATUS_LED_BIT1                 STATUS_LED_GREEN
-#define STATUS_LED_STATE1               STATUS_LED_ON
+#define STATUS_LED_STATE1               STATUS_LED_OFF
 #define STATUS_LED_PERIOD1              (CONFIG_SYS_HZ / 2)
 
+#define CONFIG_FPGA
+#define CONFIG_FPGA_LATTICE
+#define CONFIG_FPGA_TDI			MX28_PAD_LCD_D00__GPIO_1_0
+#define CONFIG_FPGA_TMS			MX28_PAD_LCD_D08__GPIO_1_8
+#define CONFIG_FPGA_TCK			MX28_PAD_LCD_D16__GPIO_1_16
+#define CONFIG_FPGA_TDO			MX28_PAD_LCD_RD_E__GPIO_1_24
+
 #define CONFIG_CMD_CACHE
-#define CONFIG_CMD_DATE
 #define CONFIG_CMD_DHCP
 #define CONFIG_CMD_GPIO
 #define CONFIG_CMD_MII
@@ -47,6 +52,7 @@
 #define CONFIG_CMD_EXT2
 #define CONFIG_CMD_FAT
 #define CONFIG_CMD_EXT4
+#define CONFIG_CMD_EXT4_WRITE
 #define CONFIG_CMD_FS_GENERIC
 #define CONFIG_CMD_NET
 #define CONFIG_CMD_NFS
@@ -57,48 +63,37 @@
 #define CONFIG_CMD_SF
 #define CONFIG_CMD_SPI
 #define CONFIG_CMD_USB
+#define CONFIG_CMD_TIME
 #define CONFIG_LIB_RAND
-/*#define CONFIG_CMD_NAND_TRIMFFS*/
+#define CONFIG_OF_LIBFDT
+#define CONFIG_SUPPORT_RAW_INITRD
+
 
 /* Memory configuration */
-#define CONFIG_NR_DRAM_BANKS		2		/* 1 bank of DRAM */
+#define CONFIG_NR_DRAM_BANKS		2		/* 2 banks of DRAM */
 #define PHYS_SDRAM_1			0x40000000	/* Base address */
 #define PHYS_SDRAM_1_SIZE		0x40000000	/* Max 1 GB RAM */
 #define CONFIG_SYS_SDRAM_BASE		PHYS_SDRAM_1
 
 /* Environment */
+#define CONFIG_SYS_NO_FLASH
 #define CONFIG_ENV_SIZE			(8 * 1024)
 #define CONFIG_ENV_OVERWRITE
 
-/* Environment is in MMC */
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#if defined(CONFIG_CMD_MMC) && defined(CONFIG_ENV_IS_IN_MMC)
-#define CONFIG_ENV_OFFSET		(256 * 1024)
-#define CONFIG_SYS_MMC_ENV_DEV		0
-#endif
-
 /* Environemnt is in SPI flash */
-#if defined(CONFIG_CMD_SF) && defined(CONFIG_ENV_IS_IN_SPI_FLASH)
-#define CONFIG_SYS_REDUNDAND_ENVIRONMENT
-#define CONFIG_ENV_OFFSET		0x40000		/* 256K */
-#define CONFIG_ENV_OFFSET_REDUND	(CONFIG_ENV_OFFSET + CONFIG_ENV_SIZE)
-#define CONFIG_ENV_SECT_SIZE		0x1000
+#define CONFIG_ENV_IS_IN_SPI_FLASH
+#define CONFIG_ENV_OFFSET		0x100000
+#define CONFIG_ENV_SECT_SIZE		(4 * 1024)
 #define CONFIG_ENV_SPI_CS		0
 #define CONFIG_ENV_SPI_BUS		2
 #define CONFIG_ENV_SPI_MAX_HZ		24000000
 #define CONFIG_ENV_SPI_MODE		SPI_MODE_0
-#endif
 
 /* FEC Ethernet on SoC */
 #ifdef	CONFIG_CMD_NET
 #define CONFIG_FEC_MXC
 #define CONFIG_NET_MULTI
 #define CONFIG_MX28_FEC_MAC_IN_OCOTP
-#endif
-
-/* RTC */
-#ifdef	CONFIG_CMD_DATE
-#define	CONFIG_RTC_MXS
 #endif
 
 /* USB */
@@ -125,6 +120,7 @@
 #ifdef CONFIG_CMD_SF
 #define CONFIG_SPI_FLASH
 #define CONFIG_SPI_FLASH_STMICRO
+#define CONFIG_SPI_FLASH_ISSI
 #define CONFIG_SF_DEFAULT_BUS		2
 #define CONFIG_SF_DEFAULT_CS		0
 /* this may vary and depends on the installed chip */
@@ -145,14 +141,6 @@
 #define CONFIG_SYS_VIDEO_LOGO_MAX_SIZE	(512 << 10)
 #endif
 
-/* Boot Linux */
-#define CONFIG_BOOTDELAY	1
-#define CONFIG_AUTOBOOT_KEYED   1
-#define CONFIG_AUTOBOOT_PROMPT  "Press Ctrl+c to abort autoboot in %d second\n", bootdelay
-#define CTRL(c) ((c)&0x1F)     
-#define CONFIG_AUTOBOOT_STOP_STR  (char []){CTRL('C'), 0}
-
-#define CONFIG_BOOTFILE		"uImage"
 #define CONFIG_LOADADDR		0x42000000
 #define CONFIG_SYS_LOAD_ADDR	CONFIG_LOADADDR
 #define CONFIG_MISC_INIT_R
@@ -162,6 +150,13 @@
 #define CONFIG_SYS_HUSH_PARSER
 #define CONFIG_SYS_PROMPT              "U-Boot > "
 #define CONFIG_AUTO_COMPLETE
+
+#define CONFIG_BOOTDELAY		1
+#define CONFIG_AUTOBOOT_KEYED		1
+#define CONFIG_AUTOBOOT_PROMPT		"Press Ctrl+C to abort autoboot in %d second(s)\n", bootdelay
+#define CTRL(c) ((c)&0x1F)
+#define CONFIG_AUTOBOOT_STOP_STR	(char []){CTRL('C'), 0}
+
 
 #define CONFIG_PREBOOT \
 	"if test \"${jpuboot}\" = \"on\"; then " \
@@ -180,8 +175,19 @@
 	"cmdline_append=rw rootwait console=ttyAMA0,115200 loglevel=3\0" \
 	"boot_fdt=yes\0" \
 	"ip_dyn=yes\0" \
-        "update-uboot=echo Updating u-boot from /boot/u-boot.sb; " \
-			"if test ${jpsdboot} = 'on' ; " \
+	"clearenv=if sf probe; then " \
+		"sf erase 0x100000 0x2000 && " \
+		"echo restored environment to factory default ; fi\0" \
+	"update-uboot=if test \"${spi}\" = \"onboard\"; " \
+			"then mx28_prod 1; " \
+			"echo Overriding SPI selection and writing to onboard SPI; " \
+		"else if test \"${spi}\" = \"offboard\"; " \
+			"then mx28_prod 2; " \
+			"echo Overriding SPI selection and writing to offboard SPI; " \
+		"fi; " \
+		"fi; " \
+		"echo Updating u-boot from /boot/u-boot.sb; " \
+		"if test ${jpsdboot} = 'on' ; " \
 			"then if load mmc 0:2 ${loadaddr} /boot/u-boot.sb; " \
 				"then sf probe; " \
 				"sf erase 0 80000; " \
@@ -193,7 +199,8 @@
 				"sf erase 0 80000; " \
 				"sf write ${loadaddr} 0 ${filesize}; " \
 			"fi; " \
-		"fi;\0" \
+		"fi;" \
+		"mx28_prod 0;\0 " \
 	"emmcboot=echo Booting from the onboard eMMC  ...; " \
 		"if load mmc 1:2 ${loadaddr} /boot/boot.ub; " \
 			"then echo Booting from custom /boot/boot.ub; " \
