@@ -206,11 +206,11 @@
 			"then echo Booting from custom /boot/boot.ub; " \
 			"source ${loadaddr}; " \
 		"fi; " \
-		"if load mmc 1:2 ${loadaddr} /boot/ts7680-fpga.vme; " \
+		"if load mmc 1:2 ${loadaddr} /boot/ts7690-fpga.vme; " \
 			"then fpga load 0 ${loadaddr} ${filesize}; " \
 		"fi; " \
 		"load mmc 1:2 ${loadaddr} /boot/uImage; " \
-		"load mmc 1:2 ${fdtaddr} /boot/imx28-ts7680.dtb; " \
+		"load mmc 1:2 ${fdtaddr} /boot/imx28-ts7690.dtb; " \
 		"setenv bootargs root=/dev/mmcblk2p2 ${cmdline_append}; " \
 		"mx28_prod 3;" \
 		"bootm ${loadaddr} - ${fdtaddr}; \0"\
@@ -219,11 +219,11 @@
 			"then echo Booting from custom /boot/boot.ub; " \
 			"source ${loadaddr}; " \
 		"fi; " \
-		"if load mmc 0:2 ${loadaddr} /boot/ts7680-fpga.vme; " \
+		"if load mmc 0:2 ${loadaddr} /boot/ts7690-fpga.vme; " \
 			"then fpga load 0 ${loadaddr} ${filesize}; " \
 		"fi; " \
 		"load mmc 0:2 ${loadaddr} /boot/uImage; " \
-		"load mmc 0:2 ${fdtaddr} /boot/imx28-ts7680.dtb; " \
+		"load mmc 0:2 ${fdtaddr} /boot/imx28-ts7690.dtb; " \
 		"setenv bootargs root=/dev/mmcblk0p2 ${cmdline_append}; " \
 		"mx28_prod 3;" \
 		"bootm ${loadaddr} - ${fdtaddr}; \0"\
@@ -243,7 +243,7 @@
 		"nfs ${loadaddr} ${nfsroot}/boot/uImage; " \
 		"setenv bootargs root=/dev/nfs ip=dhcp " \
 		  "nfsroot=${serverip}:${nfsroot},vers=2,nolock ${cmdline_append}; " \
-		"nfs ${fdtaddr} ${nfsroot}/boot/imx28-ts7680.dtb; " \
+		"nfs ${fdtaddr} ${nfsroot}/boot/imx28-ts7690.dtb; " \
 		"mx28_prod 3;" \
 		"bootm ${loadaddr} - ${fdtaddr};\0"\
 
