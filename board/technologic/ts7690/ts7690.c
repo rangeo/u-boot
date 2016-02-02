@@ -132,14 +132,8 @@ int board_early_init_f(void)
 	/* SSP2 clock at 160MHz */
 	mxs_set_sspclk(MXC_SSPCLK2, 160000, 0);
 
-#ifdef	CONFIG_CMD_USB
-	mxs_iomux_setup_pad(MX28_PAD_SSP2_SS1__USB1_OVERCURRENT);
-	mxs_iomux_setup_pad(MX28_PAD_AUART2_RX__GPIO_3_8 |
-			MXS_PAD_4MA | MXS_PAD_3V3 | MXS_PAD_NOPULL);
-	gpio_direction_output(MX28_PAD_AUART2_RX__GPIO_3_8, 1);
-#endif
-
-	mxs_iomux_setup_pad(MX28_PAD_SSP0_DETECT__GPIO_2_9);
+	/* XXX: shouldnt be needed? */
+	//mxs_iomux_setup_pad(MX28_PAD_SSP0_DETECT__GPIO_2_9);
 
 	return 0;
 }
@@ -215,10 +209,10 @@ int board_eth_init(bd_t *bis)
 	struct eth_device *dev;
 	int ret;
 	uchar enetaddr[6];
-	uint8_t val = 0x2;
+	uint8_t val = 0x0;
 
 	/* Take switch out of reset */
-	/*i2c_write(0x28, 0x2b, 2, &val, 1);*/
+	i2c_write(0x28, 0x4e, 2, &val, 1);
 
 	ret = cpu_eth_init(bis);
 	if (ret)
@@ -227,11 +221,6 @@ int board_eth_init(bd_t *bis)
 	/* MX28EVK uses ENET_CLK PAD to drive FEC clock */
 	writel(CLKCTRL_ENET_TIME_SEL_RMII_CLK | CLKCTRL_ENET_CLK_OUT_EN,
 	       &clkctrl_regs->hw_clkctrl_enet);
-
-	/* Reset FEC PHYs */
-	gpio_direction_output(MX28_PAD_SSP0_DETECT__GPIO_2_9, 0);
-	udelay(15000);
-	gpio_set_value(MX28_PAD_SSP0_DETECT__GPIO_2_9, 1);
 
 	ret = fecmxc_initialize_multi(bis, 0, 0, MXS_ENET0_BASE);
 	if (ret) {
