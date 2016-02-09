@@ -209,7 +209,7 @@ int board_eth_init(bd_t *bis)
 	struct eth_device *dev;
 	int ret;
 	uchar enetaddr[6];
-	uint8_t val = 0x2;
+	uint8_t val = 0x0;
 
 	ret = cpu_eth_init(bis);
 	if (ret)
@@ -217,7 +217,7 @@ int board_eth_init(bd_t *bis)
 
 	/* Put PHY in reset */
 	i2c_write(0x28, 0x4e, 2, &val, 1);
-	val = 0x0;
+	val = 0x2;
 
 	/* MX28EVK uses ENET_CLK PAD to drive FEC clock */
 	writel(CLKCTRL_ENET_TIME_SEL_RMII_CLK | CLKCTRL_ENET_CLK_OUT_EN,
